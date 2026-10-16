@@ -90,7 +90,7 @@ dp.create_auto_cdc_flow(
 @dp.view
 def dim_location_view():
     df = spark.readStream.table("Uber.silver.silver_obt")
-    df = df.select("pickup_city_id", "pickup_location_id", "pickup_city", "state", "region")
+    df = df.select("pickup_city_id", "pickup_location_id","updated_at", "pickup_city", "state", "region")
     df = df.dropDuplicates(subset=["pickup_city_id"])
     return df
 
@@ -99,8 +99,8 @@ dp.create_auto_cdc_flow(
     target = "Uber.gold.dim_location",
     source = "dim_location_view",
     keys = ["pickup_city_id"],
-    sequence_by = "pickup_city_id",
-    stored_as_scd_type ="1"
+    sequence_by = "updated_at",
+    stored_as_scd_type ="2"
 )
 
 # Fact Table

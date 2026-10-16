@@ -4,9 +4,19 @@
 
 # COMMAND ----------
 
+from pathlib import Path
+from jinja2 import Template
+
+# COMMAND ----------
+
 Jinja_config = [
     {
         "table" : "Uber.bronze.stg_rides stg_rides",
+        "from_clause": """
+            STREAM(Uber.bronze.stg_rides)
+            WATERMARK booking_timestamp
+            DELAY OF INTERVAL 3 MINUTES stg_rides
+        """,
         "select" : "stg_rides.ride_id, stg_rides.confirmation_number, stg_rides.passenger_id, stg_rides.driver_id, stg_rides.vehicle_id, stg_rides.pickup_location_id, stg_rides.dropoff_location_id, stg_rides.vehicle_type_id, stg_rides.vehicle_make_id, stg_rides.payment_method_id, stg_rides.ride_status_id, stg_rides.pickup_city_id, stg_rides.dropoff_city_id, stg_rides.cancellation_reason_id, stg_rides.passenger_name, stg_rides.passenger_email, stg_rides.passenger_phone, stg_rides.driver_name, stg_rides.driver_rating, stg_rides.driver_phone, stg_rides.driver_license, stg_rides.vehicle_model, stg_rides.vehicle_color, stg_rides.license_plate, stg_rides.pickup_address, stg_rides.pickup_latitude, stg_rides.pickup_longitude, stg_rides.dropoff_address, stg_rides.dropoff_latitude, stg_rides.dropoff_longitude, stg_rides.distance_miles, stg_rides.duration_minutes, stg_rides.booking_timestamp, stg_rides.pickup_timestamp, stg_rides.dropoff_timestamp, stg_rides.base_fare, stg_rides.distance_fare, stg_rides.time_fare, stg_rides.surge_multiplier, stg_rides.subtotal, stg_rides.tip_amount, stg_rides.total_fare, stg_rides.rating",
         "where" : ""
     },
@@ -51,8 +61,6 @@ Jinja_config = [
 
 # COMMAND ----------
 
-from jinja2 import Template
-
 Jinja_str = """
     SELECT
         {% for config in Jinja_config %}
@@ -62,11 +70,11 @@ Jinja_str = """
                 {% endif %}
             {% endfor %}
     FROM
-        {% for config in Jinja_config %}
+       {% for config in Jinja_config %}
             {% if loop.first %}
-                {{config.table}}
+                 {{ config.from_clause }}
             {% else %}
-                LEFT JOIN {{config.table}} ON {{config.on}}
+                 LEFT JOIN {{ config.table }} ON {{ config.on }}
             {% endif %}
         {% endfor %}
 
@@ -83,6 +91,48 @@ Jinja_str = """
         {% endfor %}
 """
 
-template = Template(Jinja_str)
-rendered_template = template.render(Jinja_config = Jinja_config)
+
+# COMMAND ----------
+
+# 1. Render the Jinja template
+sql_prefix = """
+CREATE OR REFRESH STREAMING TABLE Uber.silver.silver_obt
+AS
+"""
+
+rendered_template = (
+    sql_prefix.strip()
+    + "\n"
+    + Template(Jinja_str).render(
+        Jinja_config=Jinja_config
+    ).strip()
+)
+
+# 2. Specify the pipeline SQL file
+output_path = Path(
+    "/Workspace/Users/wisdomnwex1404@gmail.com/"
+    "Uber_Project/Uber_rides_ingest/"
+    "transformations/silver_obt.sql"
+)
+
+# 3. Check whether the destination file exists
+if not output_path.is_file():
+    raise FileNotFoundError(
+        f"Pipeline SQL file not found: {output_path}"
+    )
+
+# 4. Save the generated SQL
+output_path.write_text(
+    rendered_template + "\n",
+    encoding="utf-8"
+)
+
+# 5. Confirm what was written
+print(f"Generated SQL saved to: {output_path}")
 print(rendered_template)
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
