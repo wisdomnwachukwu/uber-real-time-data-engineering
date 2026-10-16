@@ -117,6 +117,12 @@ SCD Type 2 preserves historical versions of location records.
 
 ---
 
+## 📚 Documentation
+
+- [Architecture and Engineering Decisions](docs/architecture-and-engineering-decisions.md)
+- [Data Flow Documentation](docs/data-flow.md)
+- [Data Model Documentation](docs/data-model.md)
+
 ## 🔄 Data Flow
 
 ```text
